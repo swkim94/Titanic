@@ -58,7 +58,7 @@ xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
 zz = np.zeros(xx.shape)
 
 # data_p[data_p['Fare'].isnull()] reveals that the fare of the passenger 1044 is NaN
-# This is causing the numpy average function to through out NaN, and subsequently failing the machine learning.
+# This is causing the numpy average function to return NaN, and subsequently failing the machine learning.
 # Rectify this situation by assigning the average fare of the class.
 data_p = data_p.assign(Price=data_p['Fare'])
 data_p.loc[data_p['Fare'].isnull(),'Price'] = np.sum(data_p[data_p['Pclass']==3]['Fare'])/data_p[data_p['Pclass']==3]['Fare'].shape[0]
