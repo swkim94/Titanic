@@ -39,11 +39,13 @@ data_p = pd.read_csv('test.csv') # data for submitting the predicted 'Survived' 
 
 # Print the headers of the imported data
 print(data_t.head())
-print(type(data_t.values))
+print(type(data_t))
 
-# feature mapping and adding a column to the original dataframes
-data_t['Gender'] = (data_t['Sex']=='female').astype(int)
-data_p['Gender'] = (data_p['Sex']=='female').astype(int)
+# feature mapping and adding a new column to the original dataframes
+newcol = (data_t['Sex']=='female').astype(int)
+data_t = data_t.assign(Gender = newcol)
+newcol = (data_p['Sex']=='female').astype(int)
+data_p = data_p.assign(Gender = newcol)
 
 # preprocess dataset, split into training and test part
 X = data_t[['Gender','Pclass','Fare']].values
@@ -58,7 +60,7 @@ zz = np.zeros(xx.shape)
 # data_p[data_p['Fare'].isnull()] reveals that the fare of the passenger 1044 is NaN
 # This is causing the numpy average function to through out NaN, and subsequently failing the machine learning.
 # Rectify this situation by assigning the average fare of the class.
-data_p['Price']=data_p['Fare']
+data_p = data_p.assign(Price=data_p['Fare'])
 data_p.loc[data_p['Fare'].isnull(),'Price'] = np.sum(data_p[data_p['Pclass']==3]['Fare'])/data_p[data_p['Pclass']==3]['Fare'].shape[0]
 Xp = data_p[['Gender','Pclass','Price']].values
 Xp = StandardScaler().fit_transform(Xp)
@@ -81,47 +83,49 @@ ax.set_zlabel('fare')
 # iterate over classifiers
 i=1
 for name, clf in zip(names, classifiers):
-        ax = plt.subplot(1, len(classifiers) + 1, i+1)
+    ax = plt.subplot(1, len(classifiers) + 1, i+1)
 
-        # fit the model
-        clf.fit(X_train, y_train)
-        score = clf.score(X_test, y_test)
+    # fit the model
+    clf.fit(X_train, y_train)
+    score = clf.score(X_test, y_test)
 
-        # Plot the decision boundary. For that, we will assign a color to each
-        # point in the mesh [x_min, x_max]x[y_min, y_max].
-        if hasattr(clf, "decision_function"):
-            Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel(), zz.ravel()])
-        else:
-            Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel(), zz.ravel()])[:, 1]
+    # Plot the decision boundary. For that, we will assign a color to each
+    # point in the mesh [x_min, x_max]x[y_min, y_max].
+    if hasattr(clf, "decision_function"):
+        Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel(), zz.ravel()])
+    else:
+        Z = clf.predict_proba(np.c_[xx.ravel(), yy.ravel(), zz.ravel()])[:, 1]
 
-        # Put the result into a color plot
-        Z = Z.reshape(xx.shape)
-        ax.contourf(xx, yy, Z, cmap=cm, alpha=.8)
-        ax.contour(xx, yy, Z, levels=[0], linewidths=2, linetypes='--')
-        ax.scatter(X[:, 0], X[:, 1], s=100, c=y, cmap=plt.cm.Paired)
+    # Put the result into a color plot
+    Z = Z.reshape(xx.shape)
+    ax.contourf(xx, yy, Z, cmap=cm, alpha=.8)
+    ax.contour(xx, yy, Z, levels=[0], linewidths=2, linetypes='--')
+    ax.scatter(X[:, 0], X[:, 1], s=100, c=y, cmap=plt.cm.Paired)
 
-        ax.set_xlim(xx.min(), xx.max())
-        ax.set_ylim(yy.min(), yy.max())
-        plt.xticks(())
-        plt.yticks(())
-        ax.set_xlabel('gender')
-        ax.set_ylabel('class')
-        ax.set_title(name)
-        ax.text(xx.max() - .7, yy.min() + .7, ('%.2f' % score).lstrip('0'),
-                size=15, horizontalalignment='right')
-        plt.show()
+    ax.set_xlim(xx.min(), xx.max())
+    ax.set_ylim(yy.min(), yy.max())
+    plt.xticks(())
+    plt.yticks(())
+    ax.set_xlabel('gender')
+    ax.set_ylabel('class')
+    ax.set_title(name)
+    ax.text(xx.max() - .7, yy.min() + .7, ('%.2f' % score).lstrip('0'),
+            size=15, horizontalalignment='right')
+    plt.show()
 
-        print('mean accuracy on test data using '+name+' is %s' % score)
+    print('mean accuracy on test data using '+name+' is %s' % score)
 
-        Z_predict = clf.predict(Xp)
+    Z_predict = clf.predict(Xp)
 
-        data_out = data_p[['PassengerId']]
-        data_out['Survived'] = Z_predict
+    data_out = data_p[['PassengerId']]
+    # data_out.loc[:, 'Survived'] = Z_predict ---> this code throws a warning
+    # "A value is trying to be set on a copy of a slice from a DataFrame. Try using .loc[row_indexer,col_indexer] = value instead"
+    data_out = data_out.assign(Survived = Z_predict)
 
-        filename = 'Titanic_out_' + name + '.csv'
-        data_out.to_csv(filename, columns=["PassengerId", "Survived"], index=False)
+    filename = 'Titanic_out_' + name + '.csv'
+    data_out.to_csv(filename, columns=["PassengerId", "Survived"], index=False)
 
-        i += 1
+    i += 1
 
 plt.tight_layout()
 plt.show()
