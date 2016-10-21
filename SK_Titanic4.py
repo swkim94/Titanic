@@ -35,10 +35,10 @@ classifiers = [
 
 # Import data
 data_t = pd.read_csv('train.csv') # train & test data
-data_p = pd.read_csv('test.csv') # data for submitting the predicted 'Survived' column to Kaggle
+data_p = pd.read_csv('test.csv') # data for prediction and validation at Kaggle.
 
 # Print the headers of the imported data
-print(data_t.head())
+print(data_t.head(3))
 print(type(data_t))
 
 # feature mapping and adding a new column to the original dataframes
@@ -57,10 +57,12 @@ y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
 xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
 zz = np.zeros(xx.shape)
 
+data_p = data_p.assign(Price=data_p['Fare'])
+# data_p.isnull().sum() reveals that the "Fare" column has one bad entry.
+# data_p['Fare'].unique().size reveals that this column has 170 unique entries.
 # data_p[data_p['Fare'].isnull()] reveals that the fare of the passenger 1044 is NaN
 # This is causing the numpy average function to return NaN, and subsequently failing the machine learning.
-# Rectify this situation by assigning the average fare of the class.
-data_p = data_p.assign(Price=data_p['Fare'])
+# Rectify this situation by assigning the average fare of the class (3rd class).
 data_p.loc[data_p['Fare'].isnull(),'Price'] = np.sum(data_p[data_p['Pclass']==3]['Fare'])/data_p[data_p['Pclass']==3]['Fare'].shape[0]
 Xp = data_p[['Gender','Pclass','Price']].values
 Xp = StandardScaler().fit_transform(Xp)
@@ -69,9 +71,9 @@ Xp = StandardScaler().fit_transform(Xp)
 cm = plt.cm.RdBu
 cm_bright = ListedColormap(['#FF0000', '#0000FF'])
 
-fig = plt.figure(figsize=(27, 3))
+plt.figure(1)
 
-ax = plt.subplot(1, len(classifiers) + 1, 1, projection='3d')
+ax = plt.subplot(projection='3d')
 # Plot also the training points
 ax.scatter(X_train[:, 0], X_train[:, 1], X_train[:, 2], c=y_train, cmap=cm_bright, s=100, alpha=0.5)
 # and testing points
@@ -79,11 +81,13 @@ ax.scatter(X_test[:, 0], X_test[:, 1], X_test[:, 2], c=y_test, cmap=cm_bright, s
 ax.set_xlabel('gender')
 ax.set_ylabel('class')
 ax.set_zlabel('fare')
+plt.savefig('SK_Titanic_Plot1.png')
 
+plt.figure(figsize=(27, 3))
 # iterate over classifiers
 i=1
 for name, clf in zip(names, classifiers):
-    ax = plt.subplot(1, len(classifiers) + 1, i+1)
+    ax = plt.subplot(1, len(classifiers), i)
 
     # fit the model
     clf.fit(X_train, y_train)
@@ -112,14 +116,13 @@ for name, clf in zip(names, classifiers):
     ax.text(xx.max() - .7, yy.min() + .7, ('%.2f' % score).lstrip('0'),
             size=15, horizontalalignment='right')
     plt.show()
+    plt.savefig('SK_Titanic_Plot2.png')
 
     print('mean accuracy on test data using '+name+' is %s' % score)
 
     Z_predict = clf.predict(Xp)
 
     data_out = data_p[['PassengerId']]
-    # data_out.loc[:, 'Survived'] = Z_predict ---> this code throws a warning
-    # "A value is trying to be set on a copy of a slice from a DataFrame. Try using .loc[row_indexer,col_indexer] = value instead"
     data_out = data_out.assign(Survived = Z_predict)
 
     filename = 'Titanic_out_' + name + '.csv'
